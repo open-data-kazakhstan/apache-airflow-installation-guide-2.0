@@ -23,7 +23,7 @@ source venv/bin/activate
 
 Now it looks like this:
 ```bash
-(base) username@ubuntu:~$ 
+(venv) username@ubuntu:~$ 
 ```
 
 ## Installing Apache Airflow
@@ -31,12 +31,18 @@ Now it looks like this:
 pip install apache-airflow
 ```
 
+## Validate Airflow installation by typing this into the terminal
+```bash
+airflow version
+```
+Your version should be printed. I have this: 2.8.0
+
 ## Initializing the Airflow Database
 ```bash
 airflow db init
 ```
 
-## Creating a user
+## Creating a user (Fill in the fields yourself)
 ```bash
 airflow users create \
     --username admin \
@@ -45,107 +51,21 @@ airflow users create \
     --role Admin \
     --email your.email@example.com
 ```
-
-Launching Airflow web server and scheduler (this must be done in different terminal windows)
-```bash
-airflow webserver --port 8080
-```
-
-```bash
-airflow scheduler
-```
-
-Create a virtual conda environment. Install Python 3.11.5 into it:
-```bash
-(base) username@ubuntu:~/Documents/airflow-environment$ conda create --name airflow-environment python=3.11.5
-```
-
-Activate the virtual env:
-```bash
-(base) username@ubuntu:~/Documents/airflow-environment$ conda activate airflow-environment
-```
-After activation you will see the following:
-```bash
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ 
-```
-
-## Set the path to be the AIRFLOW_HOME env variable
-Note, this has to be done every time you open a new terminal window and use the Airflow CLI.
-
-Enter this into the terminal:
-```bash
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ export AIRFLOW_HOME=/home/username/Documents/airflow-environment
-```
-
-## Install dependencies using this in the terminal
-```bash
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ sudo apt-get update && sudo apt-get install -y python-setuptools python3-pip python-dev libffi-dev libssl-dev zip wget
-```
-
-## Install Airflow + extras using pip
-```bash
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ sudo apt-get install gcc python3-dev
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ pip install apache-airflow
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ sudo pip install gcp
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ pip install statsd
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ sudo apt-get install pkg-config libxml2-dev libxmlsec1-dev libxmlsec1-openssl
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ sudo pip install sentry==2.1.2
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ pip install cryptography
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ pip install pyspark
-```
-
-## Validate Airflow installation by typing this into the terminal
-```bash
-(airflow-environment) username@ubuntu:~/Documents/airflow-environment$ airflow version
-```
-Your version should be printed. I have this: 2.7.3
-
+Enter your password in the terminal window (only required once when creating the user for the first time)
 
 # Apache Airflow on Lunux Ubuntu - Start
 
-### Do this once, first time:
+## To run Apache Airflow, do: 1. and 2. in seperate terminal windows
 
-Change to folder:
+1. To start the Airflow web server, paste this into the first window and hit Enter:
 ```bash
-cd /Documents/airflow-environment
-```
-Activate environment:
-```bash
-conda activate airflow-environment
-```
-
-Each terminal must be given:
-```bash
-export AIRFLOW_HOME=/home/username/Documents/airflow-environment
-```
-
-Initialize the database:
-```bash
-airflow db init
-```
-Create a user, Only do this once the first time you have set up the environment (Fill in the fields yourself):
-```bash
-airflow users create --role Admin --username admin --email admin --firstname admin --lastname admin --password qwe@123!
-```
-
-# To run Apache Airflow, do: 1. and 2. in seperate terminal windows
-
-### 1. To start Airflow webserver, paste all of this in first window, and hit Enter:
-```bash
-cd /home/username/Documents/airflow-environment
-conda activate airflow-environment
-export AIRFLOW_HOME=/home/username/Documents/airflow-environment
-airflow db init
+source venv/bin/activate
 airflow webserver -p 8080
 ```
 
-### 2. To start Airflow scheduler, paste all of this in seconed window, and hit Enter:
+2. To start Airflow scheduler, paste this into the seconed window and hit Enter:
 ```bash
-cd /home/username/Documents/airflow-environment
-conda activate airflow-environment
-export AIRFLOW_HOME=/home/username/Documents/airflow-environment
-airflow db init
-export FLASK_ENV=development
+source venv/bin/activate
 airflow scheduler
 ```
 
@@ -166,49 +86,66 @@ kill <pid>
 Or Ctrl + c in the window to interrupt. (DO THIS)
 
 # Adding your own DAGs
-### To add your own DAG, go to the DAG directory where you installed airflow. For me it looks like this:
+## Create a directory with dags (continue to work in a virtual environment)
 ```bash
-(base) username@ubuntu:~$ cd /home/username/anaconda3/envs/airflow-environment/lib/python3.11/site-packages/airflow/example_dags
+mkdir ~/airflow/dags
 ```
 
-### Create a new file named “test_dag.py” and paste your code written in Python into it:
+## Create a new file named “test_dag.py” and paste your code written in Python into it:
 ```bash
-(base) username@username:~/anaconda3/envs/airflow-environment/lib/python3.11/site-packages/airflow/example_dags$ nano test_dag.py
+nano ~/airflow/dags/test_dag.py
 ```
 
-### Examle DAG:
+## Examle DAG:
 ```bash
+from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
-from datetime import datetime, timedelta
 
-# Определение параметров DAG
+# Setting DAG parameters
 default_args = {
-    'owner': 'your_name',
+    'owner': 'airflow',
+    'depends_on_past': False,
     'start_date': datetime(2023, 1, 1),
+    'email_on_failure': False,
+    'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
 
-# Создание объекта DAG
+# Creating DAG
 dag = DAG(
-    'my_dag_id',
+    'test_dag',
     default_args=default_args,
-    description='My DAG description',
-    schedule_interval=timedelta(days=1),  # Расписание выполнения
+    description='A simple test DAG',
+    schedule_interval=timedelta(days=1),
 )
 
-# Определение операторов (задач) в DAG
+# Defining operators
 start_task = DummyOperator(task_id='start_task', dag=dag)
 end_task = DummyOperator(task_id='end_task', dag=dag)
 
-# Определение порядка выполнения задач
+# Defining the execution order of operators
 start_task >> end_task
 ```
-### Now you can run the added DAG
+Save the file and close the editor (Ctrl+s => Ctrl+x). 
+
+## Now you can run the added DAG
+Testing DAG execution:
 ```bash
-airflow dags trigger -e "2023-12-14" my_dag_id
+airflow test test_dag start_task <date_of_completion>
 ```
+
+Starting DAG execution:
+```bash
+airflow trigger_dag test_dag
+```
+
+Starting a specific task in a DAG:
+```bash
+airflow run test_dag start_task date_of_completion>
+```
+
 Or do it manually via the web interface.
 ![test_dag.py](my_dag_id.png)
 After launch, if no errors occur, you will see success in the field: Status of all previous DAG runs.
